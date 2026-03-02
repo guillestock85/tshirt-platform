@@ -1,0 +1,228 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String    @id @default(uuid())
+  email           String    @unique
+  passwordHash    String
+  firstName       String
+  lastName        String
+  role            UserRole  @default(CUSTOMER)
+  emailVerifiedAt DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  uploads       Upload[]
+  orders        Order[]
+  refreshTokens RefreshToken[]
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  userAgent String?
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("refresh_tokens")
+}
+
+model Upload {
+  id               String       @id @default(uuid())
+  userId           String
+  s3Key            String       @unique
+  s3Bucket         String
+  originalFilename String
+  mimeType         String
+  sizeBytes        Int
+  status           UploadStatus @default(PENDING)
+  zone             PrintZone
+  validatedAt      DateTime?
+  createdAt        DateTime     @default(now())
+
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mockups    Mockup[]
+  orderItems OrderItem[]
+
+  @@map("uploads")
+}
+
+model Product {
+  id          String   @id @default(uuid())
+  name        String
+  slug        String   @unique
+  description String?
+  basePrice   Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  variants ProductVariant[]
+
+  @@map("products")
+}
+
+model ProductVariant {
+  id              String      @id @default(uuid())
+  productId       String
+  color           String
+  colorHex        String
+  size            String
+  additionalPrice Int         @default(0)
+  stockStatus     StockStatus @default(AVAILABLE)
+  createdAt       DateTime    @default(now())
+
+  product    Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  orderItems OrderItem[]
+
+  @@unique([productId, color, size])
+  @@map("product_variants")
+}
+
+model Order {
+  id              String      @id @default(uuid())
+  userId          String
+  status          OrderStatus @default(DRAFT)
+  subtotal        Int
+  total           Int
+  currency        String      @default("ARS")
+  shippingAddress Json
+  notes           String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  user     User        @relation(fields: [userId], references: [id])
+  items    OrderItem[]
+  payment  Payment?
+  printJob PrintJob?
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id               String  @id @default(uuid())
+  orderId          String
+  productVariantId String
+  uploadId         String?
+  quantity         Int
+  unitPrice        Int
+  customizations   Json?
+
+  order          Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productVariant ProductVariant @relation(fields: [productVariantId], references: [id])
+  upload         Upload?        @relation(fields: [uploadId], references: [id])
+
+  @@map("order_items")
+}
+
+model Payment {
+  id                String        @id @default(uuid())
+  orderId           String        @unique
+  provider          String        @default("MERCADOPAGO")
+  providerPaymentId String?       @unique
+  status            PaymentStatus @default(PENDING)
+  amount            Int
+  currency          String        @default("ARS")
+  providerResponse  Json?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  order Order @relation(fields: [orderId], references: [id])
+
+  @@map("payments")
+}
+
+model Mockup {
+  id          String       @id @default(uuid())
+  uploadId    String
+  s3Key       String?
+  status      MockupStatus @default(QUEUED)
+  generatedAt DateTime?
+  createdAt   DateTime     @default(now())
+
+  upload Upload @relation(fields: [uploadId], references: [id], onDelete: Cascade)
+
+  @@map("mockups")
+}
+
+model PrintJob {
+  id             String    @id @default(uuid())
+  orderId        String    @unique
+  status         JobStatus @default(PENDING)
+  trackingNumber String?
+  trackingUrl    String?
+  submittedAt    DateTime?
+  completedAt    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  order Order @relation(fields: [orderId], references: [id])
+
+  @@map("print_jobs")
+}
+
+enum UserRole {
+  CUSTOMER
+  ADMIN
+}
+
+enum UploadStatus {
+  PENDING
+  VALIDATED
+  REJECTED
+}
+
+enum PrintZone {
+  FRONT
+  BACK
+  TAG
+}
+
+enum MockupStatus {
+  QUEUED
+  PROCESSING
+  READY
+  FAILED
+}
+
+enum OrderStatus {
+  DRAFT
+  CONFIRMED
+  PAID
+  IN_PRODUCTION
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum StockStatus {
+  AVAILABLE
+  OUT_OF_STOCK
+}
+
+enum JobStatus {
+  PENDING
+  SUBMITTED
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+}
