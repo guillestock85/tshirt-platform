@@ -1,0 +1,15 @@
+# Railway / Nixpacks build configuration
+# Ensures prisma generate runs before nest build so @prisma/client
+# emits all model types and enums before TypeScript compilation.
+
+[phases.install]
+cmds = ["pnpm install --frozen-lockfile"]
+
+[phases.build]
+cmds = [
+  "pnpm --filter @tshirt/api exec prisma generate",
+  "pnpm --filter @tshirt/api build"
+]
+
+[start]
+cmd = "pnpm --filter @tshirt/api start"

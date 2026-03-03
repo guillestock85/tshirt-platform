@@ -163,13 +163,28 @@ export function useAutosave({
     try {
       const zonesData = groupLayersByZone(layers)
       let result: DraftSaveResult
+
       if (draftIdRef.current) {
-        result = await api.patch<DraftSaveResult>(`/drafts/${draftIdRef.current}`, {
-          variantId,
-          quantity,
-          zonesData,
-          uploadIds,
-        })
+        // Try PATCH first; if it fails (draft may be CONVERTED, expired, or deleted),
+        // fall back to POST which creates a fresh ACTIVE draft.
+        try {
+          result = await api.patch<DraftSaveResult>(`/drafts/${draftIdRef.current}`, {
+            variantId,
+            quantity,
+            zonesData,
+            uploadIds,
+          })
+        } catch {
+          // PATCH failed — clear stale draft ID and create a fresh draft
+          draftIdRef.current = null
+          result = await api.post<DraftSaveResult>('/drafts', {
+            productId,
+            variantId,
+            quantity,
+            zonesData,
+            uploadIds,
+          })
+        }
       } else {
         result = await api.post<DraftSaveResult>('/drafts', {
           productId,
