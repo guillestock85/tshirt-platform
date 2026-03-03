@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   ForbiddenException,
+  BadRequestException,
   Logger,
 } from '@nestjs/common'
 import { PrismaService } from '../../infrastructure/database/prisma.service'
@@ -149,6 +150,12 @@ export class DraftsService {
       (guestId && draft.guestId === guestId)
 
     if (!isOwner) throw new ForbiddenException('No tenés acceso a este borrador')
+
+    // Only ACTIVE drafts can be updated. CONVERTED / EXPIRED drafts are read-only
+    // so the frontend can detect the stale ID and fall back to creating a new draft.
+    if (draft.status !== DraftStatus.ACTIVE) {
+      throw new BadRequestException('El borrador ya fue convertido o expiró')
+    }
 
     return draft
   }
