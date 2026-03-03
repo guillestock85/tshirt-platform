@@ -16,9 +16,11 @@ export class MercadoPagoProvider extends IPaymentProvider {
 
   constructor(private readonly config: ConfigService) {
     super()
-    this.client = new MercadoPagoConfig({
-      accessToken: this.config.getOrThrow<string>('MERCADOPAGO_ACCESS_TOKEN'),
-    })
+    const accessToken = this.config.get<string>('MERCADOPAGO_ACCESS_TOKEN') ?? ''
+    if (!accessToken) {
+      this.logger.warn('MERCADOPAGO_ACCESS_TOKEN not set — payment endpoints will be unavailable')
+    }
+    this.client = new MercadoPagoConfig({ accessToken })
   }
 
   async createPreference(order: OrderWithRelations): Promise<PaymentPreference> {
