@@ -22,13 +22,15 @@ export class LocalStorageService extends StorageService {
     _maxSizeBytes: number,
   ): Promise<PresignedUrlResult> {
     const token = crypto.randomBytes(32).toString('hex')
-    const url = `http://localhost:3001/api/v1/uploads/local/${encodeURIComponent(key)}?token=${token}`
+    const base = (process.env.API_URL ?? 'http://localhost:3001').replace(/\/$/, '')
+    const url = `${base}/api/v1/uploads/local/${encodeURIComponent(key)}?token=${token}`
     this.logger.debug(`Generated local upload URL for key: ${key}`)
     return { url, key, expiresIn: 900 }
   }
 
   async generatePresignedReadUrl(key: string, _expiresIn = 300): Promise<string> {
-    return `http://localhost:3001/api/v1/uploads/local/${encodeURIComponent(key)}`
+    const base = (process.env.API_URL ?? 'http://localhost:3001').replace(/\/$/, '')
+    return `${base}/api/v1/uploads/local/${encodeURIComponent(key)}`
   }
 
   async deleteObject(key: string): Promise<void> {

@@ -3,6 +3,7 @@ import {
   IsInt,
   IsOptional,
   IsString,
+  IsEmail,
   Min,
   Max,
   ValidateNested,
@@ -46,6 +47,10 @@ export class ZoneUploadsDto {
   TAG?: string
 }
 
+/**
+ * @deprecated Use CreateOrderFromCartDto instead.
+ * Kept for backwards compatibility during transition.
+ */
 export class CreateOrderDto {
   @IsUUID()
   productVariantId: string
@@ -62,6 +67,29 @@ export class CreateOrderDto {
   @ValidateNested()
   @Type(() => ShippingAddressDto)
   shippingAddress: ShippingAddressDto
+
+  @IsOptional()
+  @IsString()
+  notes?: string
+}
+
+/**
+ * Production order creation from a server-side cart.
+ * Server re-validates prices, variants, and upload ownership.
+ * guestEmail is required for unauthenticated (guest) checkouts.
+ */
+export class CreateOrderFromCartDto {
+  @IsUUID()
+  cartId: string
+
+  @ValidateNested()
+  @Type(() => ShippingAddressDto)
+  shippingAddress: ShippingAddressDto
+
+  /** Required for guest orders so the customer can receive confirmation */
+  @IsOptional()
+  @IsEmail()
+  guestEmail?: string
 
   @IsOptional()
   @IsString()

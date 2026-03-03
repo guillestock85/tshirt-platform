@@ -35,23 +35,29 @@ export class MercadoPagoProvider extends IPaymentProvider {
     const frontendUrl = this.config.getOrThrow<string>('FRONTEND_URL')
     const apiUrl = this.config.getOrThrow<string>('API_URL')
 
+    // Support guest orders: user may be null, use guestEmail fallback
+    const payerEmail: string =
+      (order as any).guestEmail ?? order.user?.email ?? 'guest@remera.design'
+    const payerName: string = order.user?.firstName ?? 'Cliente'
+    const payerSurname: string = order.user?.lastName ?? ''
+
     const result = await preference.create({
       body: {
         external_reference: order.id,
         items,
         payer: {
-          email: order.user.email,
-          name: order.user.firstName,
-          surname: order.user.lastName,
+          email: payerEmail,
+          name: payerName,
+          surname: payerSurname,
         },
         back_urls: {
-          success: `${frontendUrl}/orders/${order.id}?payment=success`,
-          failure: `${frontendUrl}/orders/${order.id}?payment=failure`,
-          pending: `${frontendUrl}/orders/${order.id}?payment=pending`,
+          success: `${frontendUrl}/checkout/success?external_reference=${order.id}&collection_status=approved`,
+          failure: `${frontendUrl}/checkout/success?external_reference=${order.id}&collection_status=failure`,
+          pending: `${frontendUrl}/checkout/success?external_reference=${order.id}&collection_status=pending`,
         },
         auto_return: 'approved',
         notification_url: `${apiUrl}/api/v1/payments/webhook`,
-        statement_descriptor: 'TSHIRT PLATFORM',
+        statement_descriptor: 'REMERA DESIGN',
       },
     })
 

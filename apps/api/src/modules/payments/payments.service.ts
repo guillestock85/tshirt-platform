@@ -17,7 +17,11 @@ export class PaymentsService {
     private readonly paymentProvider: IPaymentProvider,
   ) {}
 
-  async createPreference(userId: string, orderId: string) {
+  async createPreference(
+    orderId: string,
+    userId?: string,
+    guestId?: string,
+  ) {
     const order = await this.prisma.order.findUnique({
       where: { id: orderId },
       include: {
@@ -32,7 +36,12 @@ export class PaymentsService {
     })
 
     if (!order) throw new NotFoundException('Pedido no encontrado')
-    if (order.userId !== userId) throw new BadRequestException('No tenés acceso a este pedido')
+
+    const ownedByUser = userId && order.userId === userId
+    const ownedByGuest = guestId && order.guestId === guestId
+    if (!ownedByUser && !ownedByGuest) {
+      throw new BadRequestException('No tenés acceso a este pedido')
+    }
 
     if (order.status !== OrderStatus.CONFIRMED) {
       throw new BadRequestException(

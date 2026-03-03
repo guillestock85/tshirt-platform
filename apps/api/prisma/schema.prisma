@@ -21,6 +21,8 @@ model User {
   uploads       Upload[]
   orders        Order[]
   refreshTokens RefreshToken[]
+  draftDesigns  DraftDesign[]
+  cart          Cart?
 
   @@map("users")
 }
@@ -69,7 +71,8 @@ model Product {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  variants ProductVariant[]
+  variants     ProductVariant[]
+  draftDesigns DraftDesign[]
 
   @@map("products")
 }
@@ -84,8 +87,10 @@ model ProductVariant {
   stockStatus     StockStatus @default(AVAILABLE)
   createdAt       DateTime    @default(now())
 
-  product    Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
-  orderItems OrderItem[]
+  product      Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  orderItems   OrderItem[]
+  draftDesigns DraftDesign[]
+  cartItems    CartItem[]
 
   @@unique([productId, color, size])
   @@map("product_variants")
@@ -93,7 +98,9 @@ model ProductVariant {
 
 model Order {
   id              String      @id @default(uuid())
-  userId          String
+  userId          String?     // null for guest orders
+  guestId         String?     // guest session ID (from X-Guest-Id header)
+  guestEmail      String?     // collected at checkout for guest tracking/notifications
   status          OrderStatus @default(DRAFT)
   subtotal        Int
   total           Int
@@ -103,11 +110,13 @@ model Order {
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
 
-  user     User        @relation(fields: [userId], references: [id])
+  user     User?       @relation(fields: [userId], references: [id])
   items    OrderItem[]
   payment  Payment?
   printJob PrintJob?
 
+  @@index([guestId])
+  @@index([userId])
   @@map("orders")
 }
 
@@ -225,4 +234,85 @@ enum JobStatus {
   IN_PROGRESS
   COMPLETED
   FAILED
+}
+
+enum DraftStatus {
+  ACTIVE
+  CONVERTED
+  EXPIRED
+}
+
+model DraftDesign {
+  id        String      @id @default(uuid())
+  guestId   String?
+  userId    String?
+  user      User?       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  productId String
+  product   Product        @relation(fields: [productId], references: [id])
+  variantId String
+  variant   ProductVariant @relation(fields: [variantId], references: [id])
+  quantity  Int            @default(1)
+
+  // Canvas state per zone: { FRONT?: Layer[], BACK?: Layer[], TAG?: Layer[] }
+  zonesData Json @default("{}")
+
+  // Confirmed upload IDs per zone: { FRONT?: uploadId, BACK?: uploadId, TAG?: uploadId }
+  uploadIds Json @default("{}")
+
+  previewS3Key String?
+
+  status    DraftStatus @default(ACTIVE)
+  expiresAt DateTime?   // null for auth'd users; 30 days for guests
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  cartItems CartItem[]
+
+  @@index([guestId, status])
+  @@index([userId, status])
+  @@index([productId])
+  @@index([expiresAt])
+
+  @@map("draft_designs")
+}
+
+model Cart {
+  id      String  @id @default(uuid())
+  guestId String? @unique
+  userId  String? @unique
+  user    User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  items CartItem[]
+
+  expiresAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([guestId])
+  @@index([userId])
+
+  @@map("carts")
+}
+
+model CartItem {
+  id     String @id @default(uuid())
+  cartId String
+  cart   Cart   @relation(fields: [cartId], references: [id], onDelete: Cascade)
+
+  draftDesignId String?
+  draftDesign   DraftDesign? @relation(fields: [draftDesignId], references: [id])
+
+  variantId String
+  variant   ProductVariant @relation(fields: [variantId], references: [id])
+  quantity  Int
+
+  // Snapshot for display; always re-validated at checkout (ARS cents)
+  unitPriceSnapshot Int
+
+  addedAt   DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("cart_items")
 }

@@ -104,4 +104,86 @@ export class ProductsService {
 
     return product
   }
+
+  async seedAllProducts() {
+    const catalogue = [
+      {
+        name: 'Remera Clásica',
+        slug: 'remera-clasica',
+        description: 'Remera 100% algodón, corte regular',
+        basePrice: 4500,
+        variants: [
+          { color: 'Blanco', colorHex: '#FFFFFF' },
+          { color: 'Negro', colorHex: '#1A1A1A' },
+          { color: 'Gris', colorHex: '#808080' },
+          { color: 'Azul marino', colorHex: '#1B2A4A' },
+          { color: 'Rojo', colorHex: '#C0392B' },
+        ],
+        sizes: ['XS', 'S', 'M', 'L', 'XL', 'XXL'],
+      },
+      {
+        name: 'Remera Oversize',
+        slug: 'remera-oversize',
+        description: 'Remera oversize, corte amplio, 100% algodón',
+        basePrice: 5500,
+        variants: [
+          { color: 'Blanco', colorHex: '#FFFFFF' },
+          { color: 'Negro', colorHex: '#1A1A1A' },
+          { color: 'Arena', colorHex: '#C8B89A' },
+          { color: 'Verde', colorHex: '#4A7C59' },
+        ],
+        sizes: ['S', 'M', 'L', 'XL', 'XXL'],
+      },
+      {
+        name: 'Buzo con Capucha',
+        slug: 'buzo-capucha',
+        description: 'Hoodie frizado interior, bolsillo canguro',
+        basePrice: 9500,
+        variants: [
+          { color: 'Negro', colorHex: '#1A1A1A' },
+          { color: 'Gris', colorHex: '#808080' },
+          { color: 'Azul marino', colorHex: '#1B2A4A' },
+          { color: 'Blanco', colorHex: '#F5F5F5' },
+        ],
+        sizes: ['S', 'M', 'L', 'XL', 'XXL'],
+      },
+    ]
+
+    const results = []
+
+    for (const item of catalogue) {
+      const existing = await this.prisma.product.findUnique({
+        where: { slug: item.slug },
+        include: { variants: true },
+      })
+      if (existing) {
+        results.push(existing)
+        continue
+      }
+
+      const variantRows = item.variants.flatMap((v) =>
+        item.sizes.map((size) => ({
+          color: v.color,
+          colorHex: v.colorHex,
+          size,
+          additionalPrice:
+            item.slug === 'remera-oversize' && size === 'XXL' ? 500 : 0,
+        })),
+      )
+
+      const product = await this.prisma.product.create({
+        data: {
+          name: item.name,
+          slug: item.slug,
+          description: item.description,
+          basePrice: item.basePrice,
+          variants: { create: variantRows },
+        },
+        include: { variants: true },
+      })
+      results.push(product)
+    }
+
+    return results
+  }
 }

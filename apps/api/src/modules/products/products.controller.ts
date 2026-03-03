@@ -40,4 +40,9 @@ export class ProductsController {
   seedDefault() {
     return this.productsService.seedDefaultProduct()
   }
+
+  @Post('seed/all')
+  seedAll() {
+    return this.productsService.seedAllProducts()
+  }
 }

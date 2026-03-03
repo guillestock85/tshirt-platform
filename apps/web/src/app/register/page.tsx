@@ -7,33 +7,42 @@ import { setToken, setUser } from '@/lib/auth'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api/v1'
 
-export default function LoginPage() {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
+export default function RegisterPage() {
+  const [form, setForm] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    password: '',
+  })
   const [showPwd, setShowPwd] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+
+  function update(field: keyof typeof form) {
+    return (e: React.ChangeEvent<HTMLInputElement>) =>
+      setForm((prev) => ({ ...prev, [field]: e.target.value }))
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
     setLoading(true)
     try {
-      const res = await fetch(`${API}/auth/login`, {
+      const res = await fetch(`${API}/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify(form),
       })
       const data = await res.json()
       if (!res.ok) {
-        setError(data.message ?? 'Credenciales inválidas')
+        setError(data.message ?? 'Error al registrarse')
         return
       }
       setToken(data.accessToken)
       if (data.user) setUser(data.user)
       window.location.href = '/'
     } catch {
-      setError('Error de conexión. Verificá que el servidor esté corriendo.')
+      setError('Error de conexión.')
     } finally {
       setLoading(false)
     }
@@ -45,7 +54,6 @@ export default function LoginPage() {
       style={{ backgroundColor: '#F7F5F0' }}
     >
       <div className="w-full max-w-sm">
-        {/* Logo */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-2.5 mb-5">
             <div className="w-9 h-9 bg-black rounded-xl flex items-center justify-center">
@@ -56,26 +64,55 @@ export default function LoginPage() {
             </span>
           </div>
           <h1 className="font-display font-bold text-2xl text-black">
-            Bienvenido de nuevo
+            Creá tu cuenta
           </h1>
-          <p className="text-gray-500 text-sm mt-1">Ingresá a tu cuenta</p>
+          <p className="text-gray-500 text-sm mt-1">
+            Empezá a diseñar tus remeras
+          </p>
         </div>
 
-        {/* Card */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-4">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
           <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-semibold text-black mb-1.5">
+                  Nombre
+                </label>
+                <input
+                  type="text"
+                  value={form.firstName}
+                  onChange={update('firstName')}
+                  placeholder="Juan"
+                  required
+                  className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-[#A78BFA] focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-black mb-1.5">
+                  Apellido
+                </label>
+                <input
+                  type="text"
+                  value={form.lastName}
+                  onChange={update('lastName')}
+                  placeholder="García"
+                  required
+                  className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-[#A78BFA] focus:border-transparent"
+                />
+              </div>
+            </div>
+
             <div>
               <label className="block text-sm font-semibold text-black mb-1.5">
                 Email
               </label>
               <input
                 type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                value={form.email}
+                onChange={update('email')}
                 placeholder="tu@email.com"
                 required
-                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:border-transparent transition-shadow"
-                style={{ '--tw-ring-color': '#A78BFA' } as React.CSSProperties}
+                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-[#A78BFA] focus:border-transparent"
               />
             </div>
 
@@ -86,12 +123,12 @@ export default function LoginPage() {
               <div className="relative">
                 <input
                   type={showPwd ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
+                  value={form.password}
+                  onChange={update('password')}
+                  placeholder="Mínimo 8 caracteres"
                   required
-                  className="w-full px-4 py-2.5 pr-10 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:border-transparent"
-                  style={{ '--tw-ring-color': '#A78BFA' } as React.CSSProperties}
+                  minLength={8}
+                  className="w-full px-4 py-2.5 pr-10 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-[#A78BFA] focus:border-transparent"
                 />
                 <button
                   type="button"
@@ -112,20 +149,17 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-black text-white rounded-full py-3 font-semibold text-sm hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-black text-white rounded-full py-3 font-semibold text-sm hover:bg-gray-800 transition-colors disabled:opacity-50"
             >
-              {loading ? 'Ingresando...' : 'Ingresar'}
+              {loading ? 'Creando cuenta...' : 'Crear cuenta'}
             </button>
           </form>
         </div>
 
         <p className="text-center text-sm text-gray-500 mt-4">
-          ¿No tenés cuenta?{' '}
-          <Link
-            href="/register"
-            className="text-black font-semibold hover:underline"
-          >
-            Registrate
+          ¿Ya tenés cuenta?{' '}
+          <Link href="/login" className="text-black font-semibold hover:underline">
+            Iniciá sesión
           </Link>
         </p>
       </div>
