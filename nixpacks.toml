@@ -12,4 +12,4 @@ cmds = [
 ]
 
 [start]
-cmd = "pnpm --filter @tshirt/api exec prisma migrate deploy; pnpm --filter @tshirt/api start"
+cmd = "pnpm --filter @tshirt/api exec prisma migrate deploy; echo '=== Starting NestJS ==='; ls apps/api/dist/main.js 2>&1 || echo 'ERROR: dist/main.js not found!'; pnpm --filter @tshirt/api start"
