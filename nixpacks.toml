@@ -12,4 +12,4 @@ cmds = [
 ]
 
 [start]
-cmd = "pnpm --filter @tshirt/api exec prisma migrate deploy && pnpm --filter @tshirt/api start"
+cmd = "pnpm --filter @tshirt/api exec prisma migrate deploy; pnpm --filter @tshirt/api start"
