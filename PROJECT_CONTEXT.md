@@ -1,3 +1,4 @@
+
 # PROJECT_CONTEXT.md
 > Architectural source of truth. Consult before any change. Update when architecture evolves.
 
@@ -252,3 +253,4 @@ Calls backend at `NEXT_PUBLIC_API_URL` (defaults to `http://localhost:3001`).
 - **Required env vars at runtime**: `DATABASE_URL`, `JWT_SECRET`, `JWT_REFRESH_SECRET`, `FRONTEND_URL`, `API_URL`
 - **Migrations**: Run `prisma migrate deploy` against `DATABASE_URL` before first start (Railway release command or manual).
 - No Dockerfile — Railway uses Nixpacks with Node 20.
+>>>>>>> claude/sleepy-feynman
