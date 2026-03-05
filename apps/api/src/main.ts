@@ -47,7 +47,7 @@ async function bootstrap() {
   app.useGlobalFilters(new GlobalExceptionFilter())
 
   const port = process.env.PORT || 3001
-  await app.listen(port)
+  await app.listen(port, '0.0.0.0')
   logger.log(`API running on http://localhost:${port}/api/v1`)
 }
 
