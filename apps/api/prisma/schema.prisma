@@ -43,7 +43,8 @@ model RefreshToken {
 
 model Upload {
   id               String       @id @default(uuid())
-  userId           String
+  userId           String?      // null for guest uploads
+  guestId          String?      // populated for guest uploads
   s3Key            String       @unique
   s3Bucket         String
   originalFilename String
@@ -54,7 +55,7 @@ model Upload {
   validatedAt      DateTime?
   createdAt        DateTime     @default(now())
 
-  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user       User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
   mockups    Mockup[]
   orderItems OrderItem[]
 

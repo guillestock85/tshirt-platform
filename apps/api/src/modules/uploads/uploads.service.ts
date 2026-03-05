@@ -22,7 +22,15 @@ export class UploadsService {
     private readonly storage: StorageService,
   ) {}
 
-  async requestPresignedUrl(userId: string, dto: RequestPresignedUrlDto) {
+  async requestPresignedUrl(
+    userId: string | null,
+    guestId: string | null,
+    dto: RequestPresignedUrlDto,
+  ) {
+    if (!userId && !guestId) {
+      throw new BadRequestException('Se requiere autenticación o ID de invitado')
+    }
+
     if (!ALLOWED_MIME_TYPES.includes(dto.mimeType)) {
       throw new BadRequestException('Tipo de archivo no permitido')
     }
@@ -31,7 +39,9 @@ export class UploadsService {
       throw new BadRequestException('El archivo supera el tamaño máximo de 10MB')
     }
 
-    const key = `uploads/${userId}/${dto.zone.toLowerCase()}/${crypto.randomUUID()}`
+    // Separate S3 paths for users vs guests
+    const ownerSegment = userId ? `user/${userId}` : `guest/${guestId}`
+    const key = `uploads/${ownerSegment}/${dto.zone.toLowerCase()}/${crypto.randomUUID()}`
 
     const { url, expiresIn } = await this.storage.generatePresignedUploadUrl(
       key,
@@ -39,12 +49,21 @@ export class UploadsService {
       dto.sizeBytes,
     )
 
-    this.logger.log(`Presigned URL generated for user ${userId}, zone ${dto.zone}`)
+    const owner = userId ? `user ${userId}` : `guest ${guestId}`
+    this.logger.log(`Presigned URL generated for ${owner}, zone ${dto.zone}`)
 
     return { url, key, expiresIn }
   }
 
-  async confirmUpload(userId: string, dto: ConfirmUploadDto) {
+  async confirmUpload(
+    userId: string | null,
+    guestId: string | null,
+    dto: ConfirmUploadDto,
+  ) {
+    if (!userId && !guestId) {
+      throw new BadRequestException('Se requiere autenticación o ID de invitado')
+    }
+
     if (!ALLOWED_MIME_TYPES.includes(dto.mimeType)) {
       throw new BadRequestException('Tipo de archivo no permitido')
     }
@@ -61,6 +80,7 @@ export class UploadsService {
     const upload = await this.prisma.upload.create({
       data: {
         userId,
+        guestId,
         s3Key: dto.key,
         s3Bucket: process.env.STORAGE_BUCKET || 'local',
         originalFilename: dto.originalFilename,
@@ -72,7 +92,8 @@ export class UploadsService {
       },
     })
 
-    this.logger.log(`Upload confirmed: ${upload.id} for user ${userId}`)
+    const owner = userId ? `user ${userId}` : `guest ${guestId}`
+    this.logger.log(`Upload confirmed: ${upload.id} for ${owner}`)
     return upload
   }
 
