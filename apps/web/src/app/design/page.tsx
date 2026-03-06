@@ -2,10 +2,10 @@
 
 import { useState, useRef, useCallback, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useAuth } from '@/contexts/AuthContext'
 import { useAutosave } from '@/hooks/useAutosave'
 import { api } from '@/lib/api'
-import type { Product, ProductVariant, PresignResult, Upload as UploadRecord } from '@/lib/api'
+import type { Product, ProductVariant, PresignResult, Upload as UploadRecord, Cart } from '@/lib/api'
+import { CartDrawer } from '@/components/CartDrawer'
 import {
   ArrowLeft,
   Undo2,
@@ -111,7 +111,6 @@ function AutosaveIndicator({ status }: { status: 'idle' | 'saving' | 'saved' | '
 function DesignPageInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { isAuthenticated, openAuthModal } = useAuth()
 
   const productId = searchParams.get('productId')
 
@@ -157,13 +156,14 @@ function DesignPageInner() {
 
   // Upload
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const pendingUploadRef = useRef<{ file: File; zone: Zone } | null>(null)
   const [uploadIds, setUploadIds] = useState<ZoneUploadIds>({})
   const [uploading, setUploading] = useState(false)
 
   // Cart state
   const [addingToCart, setAddingToCart] = useState(false)
   const [cartError, setCartError] = useState('')
+  const [cartDrawerOpen, setCartDrawerOpen] = useState(false)
+  const [cartCount, setCartCount] = useState(0)
 
   // ─── Load product ───────────────────────────────────────────────────────
 
@@ -191,6 +191,14 @@ function DesignPageInner() {
       .catch(() => {})
       .finally(() => setProductLoading(false))
   }, [productId])
+
+  // Fetch initial cart item count for the badge
+  useEffect(() => {
+    api
+      .get<Cart>('/cart')
+      .then((c) => setCartCount(c.items.length))
+      .catch(() => {})
+  }, [])
 
   // ─── Derived values ─────────────────────────────────────────────────────
 
@@ -344,19 +352,6 @@ function DesignPageInner() {
     setSelectedId(newLayer.id)
 
     const capturedZone = activeZone
-
-    if (!isAuthenticated) {
-      pendingUploadRef.current = { file, zone: capturedZone }
-      openAuthModal(() => {
-        const pending = pendingUploadRef.current
-        if (pending) {
-          pendingUploadRef.current = null
-          doUpload(pending.file, pending.zone)
-        }
-      })
-      return
-    }
-
     await doUpload(file, capturedZone)
   }
 
@@ -484,9 +479,11 @@ function DesignPageInner() {
     setAddingToCart(true)
     try {
       await api.post('/cart/items', { draftDesignId: draftId })
-      router.push('/checkout')
+      setCartCount((prev) => prev + 1)
+      setCartDrawerOpen(true)
     } catch {
       setCartError('No se pudo agregar al carrito. Intentá de nuevo.')
+    } finally {
       setAddingToCart(false)
     }
   }
@@ -585,8 +582,22 @@ function DesignPageInner() {
           ))}
         </div>
 
-        {/* Autosave indicator */}
-        <AutosaveIndicator status={autosaveStatus} />
+        {/* Right side: autosave + cart icon */}
+        <div className="flex items-center gap-3">
+          <AutosaveIndicator status={autosaveStatus} />
+          <button
+            onClick={() => setCartDrawerOpen(true)}
+            className="relative flex items-center justify-center w-9 h-9 rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors"
+            title="Ver carrito"
+          >
+            <ShoppingCart className="w-4 h-4 text-gray-600" />
+            {cartCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-violet-600 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center leading-none">
+                {cartCount}
+              </span>
+            )}
+          </button>
+        </div>
       </header>
 
       {/* ── Body ────────────────────────────────────────────────────────── */}
@@ -718,13 +729,7 @@ function DesignPageInner() {
               <>
                 <div className="flex flex-col gap-2">
                   <button
-                    onClick={() => {
-                      if (!isAuthenticated) {
-                        openAuthModal(() => fileInputRef.current?.click())
-                        return
-                      }
-                      fileInputRef.current?.click()
-                    }}
+                    onClick={() => fileInputRef.current?.click()}
                     className="w-full flex items-center gap-2.5 px-4 py-3 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-all"
                   >
                     {uploading ? (
@@ -734,11 +739,6 @@ function DesignPageInner() {
                     )}
                     {uploading ? 'Subiendo imagen...' : 'Subir imagen'}
                   </button>
-                  {!isAuthenticated && (
-                    <p className="text-[11px] text-gray-400 text-center">
-                      Iniciá sesión para subir imágenes
-                    </p>
-                  )}
 
                   <button
                     onClick={() => setShowTextTool((v) => !v)}
@@ -882,10 +882,6 @@ function DesignPageInner() {
                 <button
                   onClick={() => {
                     setLeftTab('design')
-                    if (!isAuthenticated) {
-                      openAuthModal(() => fileInputRef.current?.click())
-                      return
-                    }
                     fileInputRef.current?.click()
                   }}
                   className="w-full h-full flex flex-col items-center justify-center gap-2 hover:bg-violet-50/50 transition-colors"
@@ -898,7 +894,7 @@ function DesignPageInner() {
                     )}
                   </div>
                   <span className="text-[10px] text-gray-400 font-medium">
-                    {uploading ? 'Subiendo...' : isAuthenticated ? 'Subir imagen' : 'Subir imagen (requiere cuenta)'}
+                    {uploading ? 'Subiendo...' : 'Subir imagen'}
                   </span>
                 </button>
               )}
@@ -998,6 +994,13 @@ function DesignPageInner() {
         accept="image/png,image/jpeg,image/webp"
         className="hidden"
         onChange={handleFileChange}
+      />
+
+      {/* Cart drawer */}
+      <CartDrawer
+        isOpen={cartDrawerOpen}
+        onClose={() => setCartDrawerOpen(false)}
+        onCartChange={(count) => setCartCount(count)}
       />
     </div>
   )

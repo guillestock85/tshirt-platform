@@ -4,7 +4,6 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   Home,
-  ShoppingBag,
   LayoutGrid,
   Palette,
   User,
@@ -16,10 +15,8 @@ import { useAuth } from '@/contexts/AuthContext'
 
 const NAV_ITEMS = [
   { href: '/', label: 'Inicio', icon: Home },
-  { href: '/pedidos', label: 'Pedidos', icon: ShoppingBag },
   { href: '/catalogo', label: 'Catálogo', icon: LayoutGrid },
   { href: '/crear', label: 'Crear', icon: Palette },
-  { href: '/cuenta', label: 'Mi cuenta', icon: User },
 ]
 
 export default function Sidebar() {
@@ -73,6 +70,7 @@ export default function Sidebar() {
       {/* User section */}
       <div className="px-3 pb-5 pt-3 border-t border-gray-200 flex-shrink-0">
         {user ? (
+          /* Logged-in user (e.g. admin) */
           <div className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-white transition-colors group">
             <div className="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center text-xs font-bold flex-shrink-0">
               {user.firstName[0]}
@@ -95,15 +93,13 @@ export default function Sidebar() {
             </button>
           </div>
         ) : (
-          <Link
-            href="/login"
-            className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-white transition-colors"
-          >
+          /* Guest — no login link */
+          <div className="flex items-center gap-3 px-2 py-2">
             <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
               <User className="w-4 h-4 text-gray-400" />
             </div>
-            <span className="text-sm text-gray-500">Iniciar sesión</span>
-          </Link>
+            <span className="text-sm text-gray-400">Invitado</span>
+          </div>
         )}
       </div>
     </aside>
