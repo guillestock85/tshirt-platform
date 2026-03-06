@@ -14,7 +14,8 @@ export class OptionalJwtAuthGuard extends AuthGuard('jwt') {
   }
 
   // Override: return user if found, null if not — never throw
-  handleRequest(_err: unknown, user: unknown) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  handleRequest(_err: any, user: any): any {
     return user ?? null
   }
 }
